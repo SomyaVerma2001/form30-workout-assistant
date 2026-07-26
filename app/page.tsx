@@ -38,6 +38,67 @@ type WorkoutLog = {
   completedAt: string | null;
 };
 
+type WorkoutDraft = {
+  entryDate: string;
+  weightKg: number;
+  planDay: number;
+  completed: boolean;
+  durationMinutes: number;
+};
+
+const LOCAL_LOG_KEY = "somsy-workout-logs-v1";
+
+function readLocalLogs(): WorkoutLog[] {
+  try {
+    const stored = window.localStorage.getItem(LOCAL_LOG_KEY);
+    return stored ? JSON.parse(stored) as WorkoutLog[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalLog(draft: WorkoutDraft): WorkoutLog {
+  const existing = readLocalLogs();
+  const previous = existing.find((entry) => entry.entryDate === draft.entryDate);
+  const log: WorkoutLog = {
+    id: previous?.id ?? Date.now(),
+    ...draft,
+    completedAt: draft.completed ? new Date().toISOString() : null,
+  };
+  const next = [log, ...existing.filter((entry) => entry.entryDate !== draft.entryDate)]
+    .sort((a, b) => b.entryDate.localeCompare(a.entryDate));
+  window.localStorage.setItem(LOCAL_LOG_KEY, JSON.stringify(next));
+  return log;
+}
+
+async function loadWorkoutLogs(): Promise<WorkoutLog[]> {
+  if (window.location.hostname.endsWith("github.io")) return readLocalLogs();
+  try {
+    const response = await fetch("/api/workouts");
+    const payload = await response.json() as { logs?: WorkoutLog[]; error?: string };
+    if (!response.ok) throw new Error(payload.error || "Could not load your log.");
+    return payload.logs ?? [];
+  } catch {
+    return readLocalLogs();
+  }
+}
+
+async function persistWorkoutLog(draft: WorkoutDraft): Promise<WorkoutLog> {
+  if (window.location.hostname.endsWith("github.io")) return saveLocalLog(draft);
+  try {
+    const response = await fetch("/api/workouts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(draft),
+    });
+    const payload = await response.json() as { log?: WorkoutLog; error?: string };
+    if (!response.ok || !payload.log) throw new Error(payload.error || "Your entry could not be saved.");
+    return payload.log;
+  } catch {
+    return saveLocalLog(draft);
+  }
+}
+
 const exerciseLibrary: Record<string, Omit<Exercise, "seconds">> = {
   march: { name: "Fast march", target: "Stay tall • drive the arms", image: "knee", cue: "Land softly, keep your ribs stacked and swing your arms with purpose." },
   armCircles: { name: "Arm circles + swings", target: "Smooth, controlled range", image: "pushup", cue: "Relax your neck and gradually make each circle larger." },
@@ -461,12 +522,10 @@ export default function Home() {
 
   useEffect(() => {
     const savedDay = Number(window.localStorage.getItem("somsy-selected-day"));
-    fetch("/api/workouts")
-      .then(async (response) => {
-        const payload = await response.json() as { logs?: WorkoutLog[]; error?: string };
-        if (!response.ok) throw new Error(payload.error || "Could not load your log.");
-        setLogs(payload.logs ?? []);
-        const nextDay = Math.min(30, Math.max(0, ...(payload.logs ?? []).filter((log) => log.completed).map((log) => log.planDay)) + 1);
+    loadWorkoutLogs()
+      .then((savedLogs) => {
+        setLogs(savedLogs);
+        const nextDay = Math.min(30, Math.max(0, ...savedLogs.filter((log) => log.completed).map((log) => log.planDay)) + 1);
         setSelectedDay(savedDay >= 1 && savedDay <= 30 ? savedDay : nextDay);
       })
       .catch((error: Error) => setDataError(error.message))
@@ -478,21 +537,15 @@ export default function Home() {
   }, [selectedDay]);
 
   async function saveLog(weightKg: number, completed: boolean) {
-    const response = await fetch("/api/workouts", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        entryDate: localDateKey(),
-        weightKg,
-        planDay: selectedDay,
-        completed,
-        durationMinutes: completed ? selectedPlan.duration : 0,
-      }),
+    const log = await persistWorkoutLog({
+      entryDate: localDateKey(),
+      weightKg,
+      planDay: selectedDay,
+      completed,
+      durationMinutes: completed ? selectedPlan.duration : 0,
     });
-    const payload = await response.json() as { log?: WorkoutLog; error?: string };
-    if (!response.ok || !payload.log) throw new Error(payload.error || "Your entry could not be saved.");
-    mergeLog(payload.log);
-    return payload.log;
+    mergeLog(log);
+    return log;
   }
 
   async function submitCheckin(weightKg: number) {
@@ -537,7 +590,7 @@ export default function Home() {
 
       <section className="sanctum" id="home">
         <div className="sanctum-art" aria-hidden="true">
-          <img className="sanctum-backdrop" src="/og.png" alt="" />
+          <img className="sanctum-backdrop" src="./og.png" alt="" />
         </div>
         <div className="sanctum-vignette" />
         <div className="sanctum-copy">

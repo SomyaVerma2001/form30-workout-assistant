@@ -15,9 +15,10 @@ test("Somsy's private workout experience is wired into the app", async () => {
   assert.match(page, /Today’s private ritual/);
   assert.match(page, /PRIVATE LEDGER/);
   assert.match(page, /daily-weight/);
-  assert.match(page, /src="\/og\.png"/);
+  assert.match(page, /src="\.\/og\.png"/);
   assert.match(page, /useState\(true\)/);
   assert.match(page, /HANDS-FREE FLOW ACTIVE/);
+  assert.match(page, /LOCAL_LOG_KEY/);
   assert.match(page, /fetch\("\/api\/workouts"/);
   assert.match(hosting, /"d1": "DB"/);
   assert.match(schema, /workout_logs/);
