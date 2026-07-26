@@ -537,7 +537,7 @@ export default function Home() {
 
       <section className="sanctum" id="home">
         <div className="sanctum-art" aria-hidden="true">
-          <Image className="sanctum-backdrop" src="/og.png" alt="" fill sizes="100vw" priority />
+          <img className="sanctum-backdrop" src="/og.png" alt="" />
         </div>
         <div className="sanctum-vignette" />
         <div className="sanctum-copy">
