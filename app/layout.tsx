@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://form30.work"),
+  metadataBase: new URL("https://form30-workout-assistant.vsomya27.chatgpt.site"),
   title: "FORM30 — Your 30-Day Home Workout Coach",
   description:
     "A guided 30-day bodyweight workout plan with exercise demonstrations, smart timers, rest cues and saved progress.",
