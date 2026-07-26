@@ -29,6 +29,7 @@ button, a, input { font: inherit; }
 button { color: inherit; }
 a { color: inherit; text-decoration: none; }
 main { min-height: 100vh; overflow: hidden; }
+.sr-only { height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
 .somsy-shell { background: linear-gradient(180deg, #d99a34 0 39%, var(--ivory) 39% 100%); position: relative; }
 .page-pattern { background-image: radial-gradient(circle at center, rgba(113,39,40,.18) 0 2px, transparent 2.5px), radial-gradient(circle at center, transparent 0 12px, rgba(49,91,59,.12) 12.5px 13.5px, transparent 14px); background-position: 0 0, 18px 18px; background-size: 36px 36px; inset: 0; mask-image: linear-gradient(to bottom, black, transparent 72%); opacity: .46; pointer-events: none; position: absolute; }
@@ -47,16 +48,18 @@ main { min-height: 100vh; overflow: hidden; }
 .nav-progress i { color: var(--muted); font-size: .8rem; font-style: normal; }
 .nav-progress small { color: var(--muted); font-size: .52rem; font-weight: 800; letter-spacing: .1em; }
 
-.sanctum { background: linear-gradient(90deg, rgba(244,201,120,.38), transparent 24% 76%, rgba(116,43,50,.1)), #d99a34; border-bottom: 12px solid #f1d9aa; display: grid; gap: clamp(44px, 8vw, 130px); grid-template-columns: minmax(0, 1.15fr) minmax(340px, .7fr); min-height: 580px; padding: clamp(52px, 6vw, 82px) 8vw 64px; position: relative; z-index: 1; }
-.sanctum::before { background: rgba(248,236,205,.26); border: 7px double rgba(248,236,205,.72); border-bottom: 0; border-radius: 50% 50% 0 0; box-shadow: -22px -12px 0 rgba(116,43,50,.08), 22px -12px 0 rgba(33,75,88,.08); content: ""; height: 78%; position: absolute; right: 3vw; top: 18%; width: min(39vw, 540px); }
+.sanctum { align-items: end; background: #d99a34; border-bottom: 12px solid #f1d9aa; display: grid; gap: clamp(28px, 4vw, 64px); grid-template-columns: minmax(0, 1fr) 320px; min-height: 760px; overflow: hidden; padding: 350px 5vw 52px; position: relative; z-index: 1; }
+.sanctum-art { inset: 0; position: absolute; z-index: 0; }
+.sanctum-backdrop { object-fit: cover; object-position: center; }
+.sanctum-vignette { background: linear-gradient(180deg, transparent 44%, rgba(47,23,17,.12) 62%, rgba(47,23,17,.68) 100%); inset: 0; pointer-events: none; position: absolute; z-index: 1; }
 .sanctum::after { background: repeating-linear-gradient(90deg, var(--wine) 0 18px, var(--ivory) 18px 25px, var(--leaf) 25px 42px, var(--gold) 42px 50px, var(--indigo) 50px 68px); content: ""; height: 6px; inset: auto 0 0; position: absolute; }
-.sanctum-copy { max-width: 780px; position: relative; z-index: 2; }
+.sanctum-copy { align-self: end; background: rgba(248,236,205,.94); border: 1px solid rgba(75,37,26,.4); box-shadow: 8px 10px 0 rgba(47,23,17,.22); max-width: 620px; padding: 22px 24px 24px; position: relative; z-index: 2; }
 .kicker { align-items: center; color: var(--saffron); display: flex; font-size: .62rem; font-weight: 800; gap: 10px; letter-spacing: .15em; margin: 0 0 20px; text-transform: uppercase; }
 .kicker > span { background: var(--gold); display: block; height: 1px; width: 36px; }
 .sanctum h1 { color: var(--wood); font-family: var(--serif); font-size: clamp(4rem, 7.8vw, 8rem); font-weight: 500; letter-spacing: -.055em; line-height: .77; margin: 0; text-shadow: 0 1px 0 rgba(248,236,205,.5); }
 .sanctum h1 em { color: var(--wine); font-weight: 400; }
 .sanctum-intro { color: #5c3c2c; font-family: var(--serif); font-size: 1.1rem; line-height: 1.55; margin: 30px 0 34px; max-width: 510px; }
-.selected-ritual { align-items: center; background: rgba(248,236,205,.72); border: 1px solid rgba(75,37,26,.32); border-left: 5px solid var(--wine); box-shadow: 7px 7px 0 rgba(75,37,26,.1); display: grid; gap: 22px; grid-template-columns: 76px 1fr; margin: 0 0 28px; max-width: 620px; padding: 16px 18px; }
+.selected-ritual { align-items: center; border-bottom: 1px solid var(--line); border-left: 4px solid var(--wine); border-top: 1px solid var(--line); display: grid; gap: 22px; grid-template-columns: 76px 1fr; margin: 0 0 18px; max-width: 620px; padding: 13px 14px; }
 .ritual-day { align-items: center; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
 .ritual-day small { color: var(--saffron); font-size: .5rem; font-weight: 800; letter-spacing: .14em; }
 .ritual-day strong { color: var(--wine); font-family: var(--serif); font-size: 2.5rem; font-weight: 500; line-height: 1; }
@@ -68,20 +71,20 @@ main { min-height: 100vh; overflow: hidden; }
 .primary-button:disabled { cursor: wait; opacity: .65; transform: none; }
 .primary-button span { color: var(--gold-light); font-size: 1rem; }
 
-.private-ledger { align-self: center; background-color: var(--wood); background-image: linear-gradient(135deg, rgba(230,196,119,.08) 25%, transparent 25%), linear-gradient(225deg, rgba(230,196,119,.06) 25%, transparent 25%); background-size: 30px 30px; border: 6px ridge #6a3925; box-shadow: 0 26px 70px rgba(57,28,16,.32), inset 0 0 36px rgba(22,9,5,.35); color: var(--ivory); min-height: 430px; padding: 30px; position: relative; }
+.private-ledger { align-self: end; background-color: rgba(75,37,26,.96); background-image: linear-gradient(135deg, rgba(230,196,119,.08) 25%, transparent 25%), linear-gradient(225deg, rgba(230,196,119,.06) 25%, transparent 25%); background-size: 30px 30px; border: 6px ridge #6a3925; box-shadow: 0 26px 70px rgba(57,28,16,.42), inset 0 0 36px rgba(22,9,5,.35); color: var(--ivory); min-height: 365px; padding: 24px; position: relative; z-index: 2; }
 .private-ledger::before { border: 1px solid rgba(230,196,119,.28); border-radius: 46% 46% 0 0; content: ""; inset: 13px 13px 48%; pointer-events: none; position: absolute; }
 .private-ledger::after { border: 2px solid rgba(230,196,119,.38); content: ""; inset: 7px; pointer-events: none; position: absolute; }
 .ledger-heading { align-items: center; border-bottom: 1px solid rgba(227,201,135,.3); display: flex; justify-content: space-between; padding-bottom: 18px; position: relative; z-index: 1; }
 .ledger-heading span { color: var(--gold-light); font-size: .56rem; font-weight: 800; letter-spacing: .16em; }
 .ledger-heading i { color: var(--gold-light); font-style: normal; }
-.ledger-weight { align-items: flex-end; display: flex; justify-content: space-between; padding: 28px 0 18px; position: relative; z-index: 1; }
+.ledger-weight { align-items: flex-end; display: flex; justify-content: space-between; padding: 22px 0 14px; position: relative; z-index: 1; }
 .ledger-weight > div { display: flex; flex-direction: column; gap: 8px; }
 .ledger-weight small { color: rgba(245,237,223,.55); font-size: .49rem; font-weight: 800; letter-spacing: .11em; }
 .ledger-weight strong { font-family: var(--serif); font-size: 3.3rem; font-weight: 500; line-height: .8; }
 .ledger-weight strong i { color: var(--gold-light); font-family: var(--sans); font-size: .68rem; font-style: normal; }
 .ledger-weight > span { color: #e7b3a6; font-size: .62rem; }
 .ledger-weight > span.down { color: #b8d6bb; }
-.weight-bars { align-items: end; border-bottom: 1px solid rgba(227,201,135,.25); display: flex; gap: 7px; height: 95px; padding: 8px 0 10px; position: relative; z-index: 1; }
+.weight-bars { align-items: end; border-bottom: 1px solid rgba(227,201,135,.25); display: flex; gap: 7px; height: 70px; padding: 8px 0 10px; position: relative; z-index: 1; }
 .weight-column { align-items: end; display: flex; flex: 1; height: 100%; }
 .weight-column span { background: rgba(227,201,135,.48); display: block; min-height: 20%; transition: height 300ms ease; width: 100%; }
 .weight-column span.worked { background: var(--gold-light); }
@@ -192,9 +195,18 @@ footer i { color: var(--gold-light); font-style: normal; }
 .form-cue span { color: var(--saffron); font-size: .48rem; font-weight: 800; letter-spacing: .1em; }
 .form-cue p { color: rgba(245,237,223,.67); font-family: var(--serif); font-size: .88rem; line-height: 1.45; margin: 7px 0 0; }
 .runner-controls { display: grid; gap: 10px; grid-template-columns: 50px 1fr 50px; max-width: 520px; }
+.runner-controls-auto { grid-template-columns: minmax(0, 1fr) 90px; }
 .skip-button { font-size: 1.1rem; }
+.skip-text { font-size: .55rem; font-weight: 800; letter-spacing: .08em; }
 .skip-button:disabled { cursor: default; opacity: .22; }
 .play-button { align-items: center; background: var(--gold); border: 0; color: var(--wine-deep); cursor: pointer; display: flex; font-size: .65rem; font-weight: 900; justify-content: space-between; letter-spacing: .08em; min-height: 54px; padding: 0 20px; }
+.auto-flow-banner { align-items: center; border-bottom: 1px solid rgba(230,196,119,.24); border-top: 1px solid rgba(230,196,119,.24); display: flex; gap: 11px; margin: 0 0 13px; max-width: 520px; padding: 11px 0; }
+.auto-flow-banner > span { animation: autoPulse 1.6s ease-in-out infinite; background: #8ebf83; border-radius: 50%; box-shadow: 0 0 0 5px rgba(142,191,131,.12); height: 7px; width: 7px; }
+.auto-flow-banner.paused > span { animation: none; background: var(--gold); }
+.auto-flow-banner div { display: flex; flex-direction: column; gap: 2px; }
+.auto-flow-banner strong { color: var(--gold-light); font-size: .5rem; letter-spacing: .1em; }
+.auto-flow-banner small { color: rgba(245,237,223,.52); font-size: .52rem; }
+@keyframes autoPulse { 50% { box-shadow: 0 0 0 9px rgba(142,191,131,0); opacity: .7; } }
 .keyboard-hint { color: rgba(245,237,223,.28); font-size: .47rem; margin-top: 13px; }
 .runner-complete { align-items: center; background-color: var(--ivory); background-image: radial-gradient(circle at 12px 12px, rgba(184,115,36,.1) 1px, transparent 1.5px); background-size: 24px 24px; color: var(--ink); display: flex; flex-direction: column; justify-content: center; padding: 40px; text-align: center; }
 .runner-complete .runner-close { border-color: var(--wine); color: var(--wine); position: absolute; right: 30px; top: 30px; }
@@ -208,7 +220,7 @@ footer i { color: var(--gold-light); font-style: normal; }
 .finish-stats strong { color: var(--emerald); font-family: var(--serif); font-size: 2rem; font-weight: 500; }
 
 @media (max-width: 940px) {
-  .sanctum { grid-template-columns: 1fr; }
+  .sanctum { grid-template-columns: 1fr; padding-top: 390px; }
   .private-ledger { max-width: 560px; width: 100%; }
   .ritual-detail { grid-template-columns: 1fr; }
   .runner-grid { grid-template-columns: 1fr; }
@@ -221,9 +233,11 @@ footer i { color: var(--gold-light); font-style: normal; }
   .nav-date { display: none; }
   .brand-seal { height: 38px; width: 38px; }
   .brand strong { font-size: 1.05rem; }
-  .sanctum { gap: 48px; min-height: 0; padding: 54px 20px 56px; }
-  .sanctum h1 { font-size: 4.1rem; }
-  .sanctum-intro { font-size: .98rem; margin: 25px 0; }
+  .sanctum { background: #d99a34; gap: 30px; min-height: 0; padding: calc(52.5vw + 34px) 20px 56px; }
+  .sanctum-art { bottom: auto; height: 52.5vw; }
+  .sanctum-backdrop { object-fit: cover; }
+  .sanctum-vignette { background: linear-gradient(180deg, transparent 0 35%, rgba(47,23,17,.25) 100%); bottom: auto; height: 52.5vw; }
+  .sanctum-copy { padding: 18px; width: 100%; }
   .selected-ritual { grid-template-columns: 62px 1fr; }
   .selected-ritual p { display: none; }
   .private-ledger { min-height: 405px; padding: 24px; }

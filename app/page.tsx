@@ -189,7 +189,7 @@ function WorkoutRunner({ day, onClose, onComplete }: { day: DayPlan; onClose: ()
   const session = useMemo(() => buildSession(day), [day]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(session[0]?.seconds ?? 0);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const [finished, setFinished] = useState(false);
   const [audioOn, setAudioOn] = useState(true);
   const announcedRef = useRef(-1);
@@ -296,7 +296,7 @@ function WorkoutRunner({ day, onClose, onComplete }: { day: DayPlan; onClose: ()
         <button className="audio-button" type="button" onClick={() => setAudioOn((current) => !current)} aria-pressed={audioOn}>{audioOn ? "SOUND ON" : "SOUND OFF"}</button>
       </div>
       <div className="runner-progress"><span style={{ width: `${progress}%` }} /></div>
-      <div className="runner-grid">
+      <div className="runner-grid" aria-live="polite">
         <div className="runner-media">
           <ExerciseVisual image={active.image} name={active.name} />
           <div className="phase-chip">{active.kind === "rest" ? "RECOVER" : active.kind?.toUpperCase()}</div>
@@ -305,19 +305,17 @@ function WorkoutRunner({ day, onClose, onComplete }: { day: DayPlan; onClose: ()
           <p className="up-next">{activeIndex < session.length - 1 ? `NEXT: ${session[activeIndex + 1].name}` : "FINAL MOVEMENT"}</p>
           <h2>{active.name}</h2>
           <p className="runner-target">{active.target}</p>
-          <div className="timer-ring" style={{ "--timer-progress": `${timerProgress}deg` } as React.CSSProperties}><div><strong>{formatTime(secondsLeft)}</strong><span>{playing ? "KEEP MOVING" : "READY"}</span></div></div>
+          <div className="timer-ring" style={{ "--timer-progress": `${timerProgress}deg` } as React.CSSProperties}><div><strong>{formatTime(secondsLeft)}</strong><span>{playing ? active.kind === "rest" ? "RECOVER" : "KEEP MOVING" : "PAUSED"}</span></div></div>
           <div className="form-cue"><span>FORM CUE</span><p>{active.cue}</p></div>
-          <div className="runner-controls">
-            <button type="button" className="skip-button" onClick={() => {
-              if (activeIndex === 0) return;
-              const previous = activeIndex - 1;
-              setActiveIndex(previous);
-              setSecondsLeft(session[previous].seconds);
-            }} disabled={activeIndex === 0} aria-label="Previous exercise">←</button>
-            <button className="play-button" type="button" onClick={() => setPlaying((current) => !current)}>{playing ? "PAUSE" : activeIndex === 0 && secondsLeft === active.seconds ? "START" : "RESUME"}<span>{playing ? "Ⅱ" : "▶"}</span></button>
-            <button className="skip-button" type="button" onClick={advance} aria-label="Next exercise">→</button>
+          <div className={`auto-flow-banner ${playing ? "" : "paused"}`}>
+            <span />
+            <div><strong>{playing ? "HANDS-FREE FLOW ACTIVE" : "SESSION PAUSED"}</strong><small>{playing ? "Rest and the next movement begin automatically." : "Resume whenever you are ready."}</small></div>
           </div>
-          <p className="keyboard-hint">SPACE to pause · → to skip · ESC to close</p>
+          <div className="runner-controls runner-controls-auto">
+            <button className="play-button" type="button" onClick={() => setPlaying((current) => !current)}>{playing ? "PAUSE SESSION" : "RESUME SESSION"}<span>{playing ? "Ⅱ" : "▶"}</span></button>
+            <button className="skip-button skip-text" type="button" onClick={advance} aria-label="Skip to next exercise">SKIP →</button>
+          </div>
+          <p className="keyboard-hint">No tapping needed · SPACE to pause · → to skip · ESC to close</p>
         </div>
       </div>
     </div>
@@ -538,10 +536,13 @@ export default function Home() {
       </nav>
 
       <section className="sanctum" id="home">
+        <div className="sanctum-art" aria-hidden="true">
+          <Image className="sanctum-backdrop" src="/og.png" alt="" fill sizes="100vw" priority />
+        </div>
+        <div className="sanctum-vignette" />
         <div className="sanctum-copy">
-          <p className="kicker"><span /> Namaste, Somsy</p>
-          <h1>Your daily<br /><em>movement ritual.</em></h1>
-          <p className="sanctum-intro">One day at a time. Your workout, weight and progress live quietly here—just for you.</p>
+          <p className="kicker"><span /> Today’s private ritual</p>
+          <h1 className="sr-only">Somsy’s private movement ritual</h1>
           <div className="selected-ritual">
             <div className="ritual-day"><small>DAY</small><strong>{String(selectedDay).padStart(2, "0")}</strong></div>
             <div>
@@ -551,7 +552,7 @@ export default function Home() {
             </div>
           </div>
           <button className="primary-button" type="button" onClick={startCheckin}>
-            {selectedPlan.template === "rest" ? "Check in for rest day" : "Begin today’s ritual"} <span>→</span>
+            {selectedPlan.template === "rest" ? "Check in for rest day" : "Begin hands-free workout"} <span>→</span>
           </button>
         </div>
 
