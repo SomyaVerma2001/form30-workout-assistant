@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cormorant_Garamond, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,33 +12,40 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const somsySerif = Cormorant_Garamond({
+  variable: "--font-somsy-serif",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://form30-workout-assistant.vsomya27.chatgpt.site"),
-  title: "FORM30 — Your 30-Day Home Workout Coach",
+  title: "Somsy — My Private Movement Ritual",
   description:
-    "A guided 30-day bodyweight workout plan with exercise demonstrations, smart timers, rest cues and saved progress.",
+    "Somsy’s private 30-day movement ritual with guided workouts, daily weight check-ins and a personal progress ledger.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
   },
   openGraph: {
-    title: "FORM30 — 30 Days. Zero Equipment.",
+    title: "Somsy — My Private Movement Ritual",
     description:
-      "Press play on a progressive home workout plan that handles every exercise, interval and rest.",
+      "A private home for Somsy’s daily movement, weight and progress.",
     type: "website",
     images: [
       {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "FORM30 — Your Body. Your 30 Days.",
+        alt: "Somsy — My Private Movement Ritual",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FORM30 — 30 Days. Zero Equipment.",
-    description: "Your guided bodyweight workout coach.",
+    title: "Somsy — My Private Movement Ritual",
+    description: "A private home for Somsy’s daily movement, weight and progress.",
     images: ["/og.png"],
   },
 };
@@ -50,7 +57,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${somsySerif.variable}`}>
         {children}
       </body>
     </html>

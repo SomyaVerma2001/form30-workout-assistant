@@ -28,6 +28,16 @@ type DayPlan = {
   rest?: number;
 };
 
+type WorkoutLog = {
+  id: number;
+  entryDate: string;
+  weightKg: number;
+  planDay: number;
+  completed: boolean;
+  durationMinutes: number;
+  completedAt: string | null;
+};
+
 const exerciseLibrary: Record<string, Omit<Exercise, "seconds">> = {
   march: { name: "Fast march", target: "Stay tall • drive the arms", image: "knee", cue: "Land softly, keep your ribs stacked and swing your arms with purpose." },
   armCircles: { name: "Arm circles + swings", target: "Smooth, controlled range", image: "pushup", cue: "Relax your neck and gradually make each circle larger." },
@@ -265,15 +275,15 @@ function WorkoutRunner({ day, onClose, onComplete }: { day: DayPlan; onClose: ()
       <div className="runner runner-complete" role="dialog" aria-modal="true" aria-label="Workout complete">
         <button className="runner-close" type="button" onClick={onClose} aria-label="Close workout">×</button>
         <div className="finish-mark">✓</div>
-        <p className="eyebrow">DAY {day.day} COMPLETE</p>
-        <h2>YOU SHOWED UP.</h2>
-        <p>That is the win. Hydrate, cool down fully and let consistency do the heavy lifting.</p>
+        <p className="eyebrow">DAY {day.day} · RITUAL COMPLETE</p>
+        <h2>Beautiful work,<br />Somsy.</h2>
+        <p>Your movement is recorded. Hydrate, breathe, and let today’s effort settle.</p>
         <div className="finish-stats">
           <span><strong>{day.duration}</strong>MIN</span>
           <span><strong>{session.filter((step) => step.kind === "work").length}</strong>SETS</span>
           <span><strong>+1</strong>DAY</span>
         </div>
-        <button className="primary-button" type="button" onClick={onClose}>Back to plan <span>↗</span></button>
+        <button className="primary-button" type="button" onClick={onClose}>Return home <span>↗</span></button>
       </div>
     );
   }
@@ -314,119 +324,328 @@ function WorkoutRunner({ day, onClose, onComplete }: { day: DayPlan; onClose: ()
   );
 }
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function friendlyDate(dateKey: string) {
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(
+    new Date(`${dateKey}T12:00:00`),
+  );
+}
+
+function calculateStreak(logs: WorkoutLog[]) {
+  const dates = [...new Set(logs.filter((log) => log.completed).map((log) => log.entryDate))].sort().reverse();
+  if (!dates.length) return 0;
+  const cursor = new Date(`${dates[0]}T12:00:00`);
+  let streak = 0;
+  for (const dateKey of dates) {
+    if (dateKey !== localDateKey(cursor)) break;
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function WeightBars({ logs }: { logs: WorkoutLog[] }) {
+  const entries = [...logs].reverse().slice(-10);
+  if (!entries.length) {
+    return <div className="empty-chart">Your weight story begins with today’s check-in.</div>;
+  }
+  const weights = entries.map((entry) => entry.weightKg);
+  const minimum = Math.min(...weights);
+  const maximum = Math.max(...weights);
+  const range = Math.max(maximum - minimum, 1);
+
+  return (
+    <div className="weight-bars" aria-label="Recent weight trend">
+      {entries.map((entry) => (
+        <div className="weight-column" key={entry.entryDate}>
+          <span
+            className={entry.completed ? "worked" : ""}
+            style={{ height: `${32 + ((entry.weightKg - minimum) / range) * 58}%` }}
+            title={`${friendlyDate(entry.entryDate)}: ${entry.weightKg.toFixed(1)} kg`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WeightCheckin({
+  day,
+  initialWeight,
+  saving,
+  error,
+  onCancel,
+  onSubmit,
+}: {
+  day: DayPlan;
+  initialWeight: number | null;
+  saving: boolean;
+  error: string;
+  onCancel: () => void;
+  onSubmit: (weight: number) => void;
+}) {
+  const [value, setValue] = useState(initialWeight ? initialWeight.toFixed(1) : "");
+
+  return (
+    <div className="checkin-overlay" role="dialog" aria-modal="true" aria-label="Daily weight check-in">
+      <div className="checkin-pattern" />
+      <button className="checkin-close" type="button" onClick={onCancel} aria-label="Close check-in">×</button>
+      <form
+        className="checkin-card"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit(Number(value));
+        }}
+      >
+        <span className="ornament">✦</span>
+        <p className="kicker">Somsy’s daily check-in · {friendlyDate(localDateKey())}</p>
+        <h2>How are we<br /><em>arriving today?</em></h2>
+        <p>A quiet number, not a judgement. This keeps your private progress story complete.</p>
+        <label htmlFor="daily-weight">Today’s weight</label>
+        <div className="weight-input">
+          <input
+            id="daily-weight"
+            type="number"
+            min="30"
+            max="250"
+            step="0.1"
+            inputMode="decimal"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="79.8"
+            autoFocus
+            required
+          />
+          <span>KG</span>
+        </div>
+        <div className="checkin-session"><span>DAY {String(day.day).padStart(2, "0")}</span><strong>{day.label}</strong></div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <button className="primary-button" type="submit" disabled={saving}>
+          {saving ? "Saving…" : day.template === "rest" ? "Log rest day" : "Save & begin ritual"} <span>→</span>
+        </button>
+        <small>Saved privately to Somsy’s workout log.</small>
+      </form>
+    </div>
+  );
+}
+
 export default function Home() {
   const [selectedDay, setSelectedDay] = useState(1);
   const [runnerOpen, setRunnerOpen] = useState(false);
-  const [completedDays, setCompletedDays] = useState<number[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const [logs, setLogs] = useState<WorkoutLog[]>([]);
+  const [activeWeight, setActiveWeight] = useState<number | null>(null);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dataError, setDataError] = useState("");
   const selectedPlan = dayPlans[selectedDay - 1];
+  const completedDays = useMemo(
+    () => [...new Set(logs.filter((log) => log.completed).map((log) => log.planDay))],
+    [logs],
+  );
+  const latestWeight = logs[0]?.weightKg ?? null;
+  const firstWeight = logs.length ? logs[logs.length - 1].weightKg : null;
+  const weightChange = latestWeight !== null && firstWeight !== null ? latestWeight - firstWeight : null;
+  const streak = calculateStreak(logs);
+  const todayLog = logs.find((log) => log.entryDate === localDateKey());
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem("form30-completed");
-    const savedDay = Number(window.localStorage.getItem("form30-selected"));
-    if (saved) setCompletedDays(JSON.parse(saved));
-    if (savedDay >= 1 && savedDay <= 30) setSelectedDay(savedDay);
-    setHydrated(true);
+  const mergeLog = useCallback((log: WorkoutLog) => {
+    setLogs((current) => [log, ...current.filter((entry) => entry.entryDate !== log.entryDate)].sort(
+      (a, b) => b.entryDate.localeCompare(a.entryDate),
+    ));
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem("form30-completed", JSON.stringify(completedDays));
-    window.localStorage.setItem("form30-selected", String(selectedDay));
-  }, [completedDays, hydrated, selectedDay]);
+    const savedDay = Number(window.localStorage.getItem("somsy-selected-day"));
+    fetch("/api/workouts")
+      .then(async (response) => {
+        const payload = await response.json() as { logs?: WorkoutLog[]; error?: string };
+        if (!response.ok) throw new Error(payload.error || "Could not load your log.");
+        setLogs(payload.logs ?? []);
+        const nextDay = Math.min(30, Math.max(0, ...(payload.logs ?? []).filter((log) => log.completed).map((log) => log.planDay)) + 1);
+        setSelectedDay(savedDay >= 1 && savedDay <= 30 ? savedDay : nextDay);
+      })
+      .catch((error: Error) => setDataError(error.message))
+      .finally(() => setLoadingLogs(false));
+  }, []);
 
-  const markComplete = useCallback(() => {
-    setCompletedDays((current) => current.includes(selectedDay) ? current : [...current, selectedDay].sort((a, b) => a - b));
+  useEffect(() => {
+    window.localStorage.setItem("somsy-selected-day", String(selectedDay));
   }, [selectedDay]);
 
-  const selectDay = (day: number) => {
-    setSelectedDay(day);
-    window.requestAnimationFrame(() => document.getElementById("today")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  async function saveLog(weightKg: number, completed: boolean) {
+    const response = await fetch("/api/workouts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        entryDate: localDateKey(),
+        weightKg,
+        planDay: selectedDay,
+        completed,
+        durationMinutes: completed ? selectedPlan.duration : 0,
+      }),
+    });
+    const payload = await response.json() as { log?: WorkoutLog; error?: string };
+    if (!response.ok || !payload.log) throw new Error(payload.error || "Your entry could not be saved.");
+    mergeLog(payload.log);
+    return payload.log;
+  }
+
+  async function submitCheckin(weightKg: number) {
+    setDataError("");
+    setSaving(true);
+    try {
+      await saveLog(weightKg, selectedPlan.template === "rest");
+      setActiveWeight(weightKg);
+      setCheckinOpen(false);
+      if (selectedPlan.template !== "rest") setRunnerOpen(true);
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "Your entry could not be saved.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const markComplete = useCallback(() => {
+    const weight = activeWeight ?? todayLog?.weightKg ?? latestWeight;
+    if (weight === null) return;
+    void saveLog(weight, true).catch((error: Error) => setDataError(error.message));
+  // saveLog is intentionally scoped to the selected session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWeight, latestWeight, selectedDay, selectedPlan.duration, todayLog?.weightKg]);
+
+  const startCheckin = () => {
+    setDataError("");
+    setCheckinOpen(true);
   };
 
   return (
-    <main>
+    <main className="somsy-shell">
+      <div className="page-pattern" />
       <nav className="nav">
-        <a className="brand" href="#top" aria-label="FORM30 home"><span className="brand-mark">F<span>+</span></span><span>FORM<strong>30</strong></span></a>
-        <div className="nav-links"><a href="#plan">THE PLAN</a><a href="#moves">MOVES</a><a href="#fuel">FUEL</a></div>
-        <div className="nav-progress"><span>{completedDays.length}<i>/30</i></span><small>DAYS DONE</small></div>
+        <a className="brand" href="#home" aria-label="Somsy home">
+          <span className="brand-seal">S</span>
+          <span><strong>SOMSY</strong><small>PRIVATE MOVEMENT RITUAL</small></span>
+        </a>
+        <p className="nav-date">{new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</p>
+        <div className="nav-progress"><span>{completedDays.length}<i>/30</i></span><small>RITUALS</small></div>
       </nav>
 
-      <section className="hero" id="top">
-        <div className="hero-grid" /><div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
-        <div className="hero-copy">
-          <p className="eyebrow"><span /> 30 DAYS · ZERO EQUIPMENT · ONE MAT</p>
-          <h1>YOUR BODY.<br /><em>YOUR 30 DAYS.</em></h1>
-          <p className="hero-intro">A progressive home program built around strength, cardio and recovery—with every interval, rest and form cue handled for you.</p>
-          <div className="hero-actions">
-            <button className="primary-button" type="button" onClick={() => setRunnerOpen(true)} disabled={selectedPlan.template === "rest"}>{selectedPlan.template === "rest" ? "Recovery day" : `Start day ${selectedDay}`} <span>▶</span></button>
-            <a className="text-link" href="#plan">EXPLORE THE PLAN <span>↓</span></a>
+      <section className="sanctum" id="home">
+        <div className="sanctum-copy">
+          <p className="kicker"><span /> Namaste, Somsy</p>
+          <h1>Your daily<br /><em>movement ritual.</em></h1>
+          <p className="sanctum-intro">One day at a time. Your workout, weight and progress live quietly here—just for you.</p>
+          <div className="selected-ritual">
+            <div className="ritual-day"><small>DAY</small><strong>{String(selectedDay).padStart(2, "0")}</strong></div>
+            <div>
+              <span>{selectedPlan.phase} · {selectedPlan.label}</span>
+              <h2>{selectedPlan.title}</h2>
+              <p>{selectedPlan.summary}</p>
+            </div>
           </div>
+          <button className="primary-button" type="button" onClick={startCheckin}>
+            {selectedPlan.template === "rest" ? "Check in for rest day" : "Begin today’s ritual"} <span>→</span>
+          </button>
         </div>
-        <div className="hero-metric metric-one"><strong>79.8</strong><span>KG<br />START</span></div>
-        <div className="hero-metric metric-two"><strong>184</strong><span>CM<br />HEIGHT</span></div>
-        <div className="hero-badge"><div><strong>{completedDays.length}</strong><span>DAYS<br />DONE</span></div><div className="badge-ring" style={{ "--progress": `${(completedDays.length / 30) * 360}deg` } as React.CSSProperties}><span>{Math.round((completedDays.length / 30) * 100)}%</span></div></div>
-        <div className="marquee"><div>MOVE WITH INTENT <b>+</b> BUILD THE HABIT <b>+</b> STRONGER EVERY WEEK <b>+</b> MOVE WITH INTENT <b>+</b> BUILD THE HABIT <b>+</b></div></div>
+
+        <aside className="private-ledger">
+          <div className="ledger-heading"><span>PRIVATE LEDGER</span><i>✦</i></div>
+          <div className="ledger-weight">
+            <div><small>LATEST WEIGHT</small><strong>{latestWeight !== null ? latestWeight.toFixed(1) : "—"}<i> kg</i></strong></div>
+            <span className={weightChange !== null && weightChange <= 0 ? "down" : ""}>
+              {weightChange === null ? "No trend yet" : `${weightChange > 0 ? "+" : ""}${weightChange.toFixed(1)} kg overall`}
+            </span>
+          </div>
+          <WeightBars logs={logs} />
+          <div className="ledger-stats">
+            <div><strong>{completedDays.length}</strong><span>days complete</span></div>
+            <div><strong>{streak}</strong><span>day streak</span></div>
+            <div><strong>{logs.length}</strong><span>weigh-ins</span></div>
+          </div>
+          <p className="ledger-note">{loadingLogs ? "Opening your private log…" : dataError || "Your entries remain saved between visits."}</p>
+        </aside>
       </section>
 
-      <section className="today-section" id="today">
-        <div className="today-heading"><div><p className="eyebrow">SELECTED SESSION</p><h2>DAY {String(selectedDay).padStart(2, "0")}</h2></div><div className="today-phase">{selectedPlan.phase}</div></div>
-        <div className="today-card">
-          <div className="today-main">
-            <span className={`type-pill type-${selectedPlan.template}`}>{selectedPlan.label}</span>
-            <h3>{selectedPlan.title}</h3><p>{selectedPlan.summary}</p>
-            <div className="session-meta"><span><small>TIME</small><strong>{selectedPlan.duration ? `${selectedPlan.duration} MIN` : "REST"}</strong></span><span><small>EFFORT</small><strong>{selectedPlan.intensity}</strong></span><span><small>EXTRA</small><strong>{selectedPlan.movement}</strong></span></div>
-            <div className="structure">{selectedPlan.structure.map((item, index) => <span key={item}><i>0{index + 1}</i>{item}</span>)}</div>
-            {selectedPlan.template === "rest" ? <div className="rest-message"><strong>REST IS TRAINING.</strong><span>Hydrate · protein at every meal · aim for quality sleep</span></div> : <button className="primary-button" type="button" onClick={() => setRunnerOpen(true)}>Start guided workout <span>▶</span></button>}
-          </div>
-          <div className="today-visual"><div className="today-number">{String(selectedDay).padStart(2, "0")}</div><div className="visual-cut"><Image src="/exercises/squat-1.jpg" alt="Athlete performing a bodyweight squat" fill sizes="(max-width: 800px) 100vw, 42vw" priority /></div><div className="today-stamp">NO GYM<br />NO EXCUSES</div></div>
+      <section className="ritual-strip" aria-label="Choose a workout day">
+        <div className="strip-heading"><span>YOUR 30 DAYS</span><small>Choose any day</small></div>
+        <div className="day-scroll">
+          {dayPlans.map((day) => {
+            const complete = completedDays.includes(day.day);
+            return (
+              <button
+                type="button"
+                key={day.day}
+                className={`${selectedDay === day.day ? "selected" : ""} ${complete ? "complete" : ""}`}
+                onClick={() => setSelectedDay(day.day)}
+                aria-label={`Select day ${day.day}: ${day.label}`}
+              >
+                <span>{String(day.day).padStart(2, "0")}</span>
+                <small>{complete ? "✓" : day.template === "rest" ? "rest" : day.label.split(" ")[0]}</small>
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      <section className="plan-section" id="plan">
-        <div className="section-heading"><p className="eyebrow">THE ROADMAP</p><h2>30 DAYS.<br /><em>BUILT TO PROGRESS.</em></h2><p>Tap any day to see exactly what is waiting. Your completed sessions stay saved on this device.</p></div>
-        <div className="calendar">
-          {phaseNames.map((phase, phaseIndex) => (
-            <div className="week-row" key={phase}>
-              <div className="week-label"><span>{phaseIndex < 4 ? `WEEK 0${phaseIndex + 1}` : "FINISH"}</span><strong>{phase}</strong></div>
-              <div className="day-grid">
-                {dayPlans.filter((day) => day.phase === phase).map((day) => {
-                  const isComplete = completedDays.includes(day.day);
-                  return <button type="button" key={day.day} className={`day-tile ${selectedDay === day.day ? "selected" : ""} ${isComplete ? "complete" : ""} ${day.template === "rest" ? "rest-day" : ""}`} onClick={() => selectDay(day.day)} aria-label={`Day ${day.day}: ${day.label}${isComplete ? ", completed" : ""}`}><span className="day-number">{String(day.day).padStart(2, "0")}</span><strong>{day.label}</strong><small>{day.duration ? `${day.duration} min` : "recover"}</small><i>{isComplete ? "✓" : "↗"}</i></button>;
-                })}
+      <section className="ritual-detail">
+        <div className="detail-card">
+          <div className="detail-topline"><span>TODAY’S COMPOSITION</span><small>{selectedPlan.duration ? `${selectedPlan.duration} minutes` : "recovery"}</small></div>
+          <div className="detail-body">
+            <div>
+              <h2>{selectedPlan.label}</h2>
+              <div className="structure">
+                {selectedPlan.structure.map((item, index) => <span key={item}><i>0{index + 1}</i>{item}</span>)}
               </div>
             </div>
-          ))}
+            <div className="detail-metrics">
+              <span><small>EFFORT</small><strong>{selectedPlan.intensity}</strong></span>
+              <span><small>DAILY MOVE</small><strong>{selectedPlan.movement}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div className="history-card">
+          <div className="detail-topline"><span>RECENT ENTRIES</span><small>weight + movement</small></div>
+          <div className="history-list">
+            {logs.slice(0, 5).map((log) => (
+              <div key={log.id}>
+                <span>{friendlyDate(log.entryDate)}</span>
+                <strong>{log.weightKg.toFixed(1)} kg</strong>
+                <small>{log.completed ? `Day ${log.planDay} complete` : `Day ${log.planDay} check-in`}</small>
+                <i className={log.completed ? "done" : ""}>{log.completed ? "✓" : "·"}</i>
+              </div>
+            ))}
+            {!logs.length && <p>No entries yet. Begin with today’s ritual.</p>}
+          </div>
         </div>
       </section>
 
-      <section className="method-section">
-        <div className="method-title"><p className="eyebrow">YOUR COACH, BUILT IN</p><h2>PRESS PLAY.<br />WE HANDLE <em>THE REST.</em></h2></div>
-        <div className="method-cards">
-          <article><span>01</span><div className="method-icon">▶</div><div><h3>Guided flow</h3><p>Warm-up, working sets and cooldown arrive in the right order. Just follow the screen.</p></div></article>
-          <article><span>02</span><div className="method-icon">00:45</div><div><h3>Smart timing</h3><p>Automatic work intervals, transitions and round rests keep the session moving.</p></div></article>
-          <article><span>03</span><div className="method-icon">◎</div><div><h3>Form first</h3><p>Start-and-finish imagery plus one useful cue for every movement and modification.</p></div></article>
-        </div>
-      </section>
+      <footer><span>Somsy’s private space</span><i>✦</i><span>Move gently. Grow steadily.</span></footer>
 
-      <section className="moves-section" id="moves">
-        <div className="section-heading compact"><p className="eyebrow">MOVEMENT LIBRARY</p><h2>KNOW THE MOVE.<br /><em>OWN THE REP.</em></h2></div>
-        <div className="move-grid">
-          {[["squat", "Bodyweight squat", "LEGS + GLUTES"], ["pushup", "Push-up", "CHEST + CORE"], ["lunge", "Reverse lunge", "LEGS + BALANCE"], ["bridge", "Glute bridge", "GLUTES + HAMSTRINGS"], ["deadbug", "Dead bug", "DEEP CORE"], ["plank", "Forearm plank", "CORE + SHOULDERS"], ["mountain", "Mountain climber", "FULL BODY"], ["sideplank", "Side plank", "OBLIQUES + SHOULDERS"]].map(([image, name, focus], index) => (
-            <article className="move-card" key={name}><div className="move-image"><Image src={`/exercises/${image}-${index % 2}.jpg`} alt={`${name} exercise demonstration`} fill sizes="(max-width: 700px) 50vw, 25vw" /><span>0{index + 1}</span></div><div><small>{focus}</small><h3>{name}</h3></div></article>
-          ))}
-        </div>
-        <p className="image-credit">Exercise reference imagery: Free Exercise DB · public-domain dataset.</p>
-      </section>
-
-      <section className="fuel-section" id="fuel">
-        <div className="fuel-copy"><p className="eyebrow">THE OTHER HALF</p><h2>TRAIN HARD.<br /><em>EAT LIKE IT MATTERS.</em></h2><p>Exercise supports the goal. Your food routine determines whether the calorie deficit is sustainable.</p><div className="protein-callout"><strong>96–128<small>G</small></strong><span>DAILY PROTEIN<br />TARGET RANGE</span></div></div>
-        <div className="fuel-list"><div><span>01</span><strong>Build three structured meals</strong><p>Add one planned snack only when genuinely hungry.</p></div><div><span>02</span><strong>Protein at every meal</strong><p>Eggs, Greek yogurt, tofu, legumes, fish or lean meat.</p></div><div><span>03</span><strong>Half the plate, vegetables</strong><p>Keep carbohydrates—control the portion instead of eliminating them.</p></div><div><span>04</span><strong>Drink the simple stuff</strong><p>Water regularly. Skip sugary drinks, caloric coffees and routine alcohol.</p></div></div>
-      </section>
-
-      <section className="reality-check"><span>IMPORTANT</span><div><h2>AIM FOR PROGRESS,<br />NOT A PUNISHMENT.</h2><p>At your current height and weight, 5–6 kg in 30 days is aggressive. A more realistic target is about 2–4 kg. Do not use deliberate dehydration or push through sharp joint pain, chest discomfort, faintness or unusual breathlessness. Stop and seek medical guidance when symptoms are concerning.</p></div></section>
-      <footer><a className="brand footer-brand" href="#top"><span className="brand-mark">F<span>+</span></span><span>FORM<strong>30</strong></span></a><p>SHOW UP. MOVE WELL. REPEAT.</p><a href="#top">BACK TO TOP ↑</a></footer>
-      {runnerOpen && <WorkoutRunner day={selectedPlan} onClose={() => setRunnerOpen(false)} onComplete={markComplete} />}
+      {checkinOpen && (
+        <WeightCheckin
+          day={selectedPlan}
+          initialWeight={todayLog?.weightKg ?? latestWeight}
+          saving={saving}
+          error={dataError}
+          onCancel={() => setCheckinOpen(false)}
+          onSubmit={submitCheckin}
+        />
+      )}
+      {runnerOpen && (
+        <WorkoutRunner
+          day={selectedPlan}
+          onClose={() => setRunnerOpen(false)}
+          onComplete={markComplete}
+        />
+      )}
     </main>
   );
 }
